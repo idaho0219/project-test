@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+  <meta content="mobile_tab" name="shell-type"/>
+  <title>파킹셰어 - Smart Parking Platform</title>
+  
+  <!-- Fonts & Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+  
+  <!-- Leaflet CSS for Interactive Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet JS Library -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    @layer base {
+      html, body { width: 100%; margin: 0; padding: 0; background-color: #faf8ff; }
+      body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+      main > :first-child { margin-top: 0 !important; }
+      main > :last-child { margin-bottom: 0 !important; }
+    }
+    ::-webkit-scrollbar { display: none; }
+    .page-section { display: none; }
+    .page-section.active { display: flex; flex-direction: column; }
+    
+    /* Custom Leaflet Map Adjustments */
+    .leaflet-container {
+      font-family: 'Noto Sans', sans-serif !important;
+      background-color: #f2f3ff !important;
+      z-index: 1;
+    }
+    .leaflet-control-attribution {
+      font-size: 9px !important;
+      background: rgba(255, 255, 255, 0.7) !important;
+      backdrop-filter: blur(4px);
+      border-top-left-radius: 8px;
+      padding: 2px 6px !important;
+    }
+    .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar {
+      border: none !important;
+      box-shadow: 0 4px 12px rgba(19, 27, 46, 0.12) !important;
+    }
+    .custom-div-icon {
+      background: transparent !important;
+      border: none !important;
+    }
+    /* Bounce Animation for Active Marker Pin */
+    @keyframes subtle-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .marker-active {
+      animation: subtle-bounce 1.5s infinite ease-in-out;
+      z-index: 1000 !important;
+    }
+  </style>
+
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'on-secondary': '#ffffff',
+            'secondary-container': '#82f5c1',
+            'on-tertiary': '#ffffff',
+            'error': '#ba1a1a',
+            'background': '#faf8ff',
+            'secondary-fixed': '#85f8c4',
+            'primary-fixed-dim': '#b7c4ff',
+            'surface-variant': '#dae2fd',
+            'surface-container': '#eaedff',
+            'on-error': '#ffffff',
+            'surface-bright': '#faf8ff',
+            'inverse-on-surface': '#eef0ff',
+            'outline-variant': '#c4c5d7',
+            'surface-container-low': '#f2f3ff',
+            'surface-container-lowest': '#ffffff',
+            'tertiary-fixed-dim': '#ffb77d',
+            'on-primary-container': '#cad3ff',
+            'surface-dim': '#d2d9f4',
+            'on-tertiary-fixed-variant': '#6e3900',
+            'tertiary': '#6b3700',
+            'on-background': '#131b2e',
+            'secondary-fixed-dim': '#68dba9',
+            'tertiary-container': '#8d4b00',
+            'on-tertiary-container': '#ffcba3',
+            'on-secondary-fixed-variant': '#005137',
+            'on-surface-variant': '#434655',
+            'on-secondary-container': '#00714e',
+            'surface-container-high': '#e2e7ff',
+            'on-error-container': '#93000a',
+            'on-primary-fixed-variant': '#0039b5',
+            'inverse-surface': '#283044',
+            'secondary': '#006c4a',
+            'surface-container-highest': '#dae2fd',
+            'on-secondary-fixed': '#002114',
+            'primary': '#0037b0',
+            'surface-tint': '#2151da',
+            'primary-fixed': '#dce1ff',
+            'outline': '#747686',
+            'tertiary-fixed': '#ffdcc3',
+            'on-surface': '#131b2e',
+            'surface': '#faf8ff',
+            'on-primary-fixed': '#001551',
+            'on-tertiary-fixed': '#2f1500',
+            'error-container': '#ffdad6',
+            'on-primary': '#ffffff',
+            'inverse-primary': '#b7c4ff',
+            'primary-container': '#1d4ed8'
+          },
+          borderRadius: {
+            'DEFAULT': '0.25rem',
+            'lg': '0.5rem',
+            'xl': '0.75rem',
+            'full': '9999px'
+          },
+          spacing: {
+            'space-xl': '2rem',
+            'margin': '1.25rem',
+            'space-lg': '1.25rem',
+            'space-md': '0.75rem',
+            'space-xs': '0.25rem',
+            'space-sm': '0.5rem',
+            'gutter': '1rem'
+          },
+          fontFamily: {
+            'label-caption': ['Noto Sans'],
+            'headline-sm': ['Plus Jakarta Sans'],
+            'label-numeric': ['Plus Jakarta Sans'],
+            'headline-md': ['Plus Jakarta Sans'],
+            'display-hero': ['Plus Jakarta Sans'],
+            'body-sm': ['Noto Sans'],
+            'label-badge': ['Plus Jakarta Sans'],
+            'body-md': ['Noto Sans'],
+            'body-lg': ['Noto Sans'],
+            'headline-lg': ['Plus Jakarta Sans']
+          },
+          fontSize: {
+            'label-caption': ['11px', {'lineHeight': '14px', 'letterSpacing': '0em', 'fontWeight': '500'}],
+            'headline-sm': ['18px', {'lineHeight': '26px', 'letterSpacing': '-0.01em', 'fontWeight': '600'}],
+            'label-numeric': ['15px', {'lineHeight': '20px', 'letterSpacing': '-0.02em', 'fontWeight': '700'}],
+            'headline-md': ['22px', {'lineHeight': '30px', 'letterSpacing': '-0.015em', 'fontWeight': '700'}],
+            'display-hero': ['36px', {'lineHeight': '44px', 'letterSpacing': '-0.03em', 'fontWeight': '800'}],
+            'body-sm': ['13px', {'lineHeight': '18px', 'letterSpacing': '0em', 'fontWeight': '400'}],
+            'label-badge': ['11px', {'lineHeight': '14px', 'letterSpacing': '0.04em', 'fontWeight': '700'}],
+            'body-md': ['14px', {'lineHeight': '20px', 'letterSpacing': '-0.005em', 'fontWeight': '400'}],
+            'body-lg': ['16px', {'lineHeight': '24px', 'letterSpacing': '-0.01em', 'fontWeight': '500'}],
+            'headline-lg': ['28px', {'lineHeight': '36px', 'letterSpacing': '-0.02em', 'fontWeight': '700'}]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen">
+  
+  <header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_12px_rgba(19,27,46,0.06)] pt-safe">
+    <div class="h-16 px-margin flex items-center justify-between">
+      <div class="flex items-center gap-space-sm">
+        <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-[0_4px_12px_rgba(0,55,176,0.25)]">
+          <span class="material-symbols-outlined text-[22px]">local_parking</span>
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-1.5">
+            <span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">파킹셰어</span>
+            <span class="px-1.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-badge text-[10px] uppercase font-bold leading-none tracking-normal">LIVE MAP</span>
+          </div>
+          <span class="font-label-caption text-label-caption text-on-surface-variant leading-none" id="header-subtitle">Explore Parking</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-space-xs">
+        <button aria-label="알림" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container active:scale-95 transition-all" type="button">
+          <span class="material-symbols-outlined text-[24px]">notifications</span>
+        </button>
+        <button aria-label="내 프로필" class="w-11 h-11 flex items-center justify-center rounded-full hover:opacity-90 active:scale-95 transition-all" type="button">
+          <img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1XRm9CNrughAtzdhaZPzITQfppMmp5SK4lPwuzVJYWALnARfdtZJuOTPwMjbEYQuSwB0Tbdg6Z2a723Y-xJYrX2zeSr7mwHVrXE2icZv7lEEDyJLYCQy_tOwdGXPjrQe9ECBGojlFOC_kkz5u-JJ7y7ZjAw40o2G2ani1oE-LOUrOja-HvmJzwxkNR94Ih1Xpl_oK3L4j6WU1RZ__XBFlGIptT4Kpvgwk83NLwdnmHLjMJC51TeCZIRC10"/>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col relative w-full pt-16 pb-24 bg-surface">
+
+    <!-- PAGE 1: 주차 탐색 (explore-parking) -->
+    <div id="page1" class="page-section active w-full">
+      <div class="flex flex-col w-full relative select-none">
+        
+        <!-- Top Floating Search Bar & Horizontal Filter Chips -->
+        <div class="px-margin pt-space-md pb-space-sm z-30 flex flex-col gap-space-sm bg-gradient-to-b from-surface via-surface/95 to-transparent">
+          <form class="w-full bg-surface-container-lowest shadow-[0_8px_24px_-4px_rgba(19,27,46,0.12)] rounded-full px-4 py-2.5 flex items-center gap-space-sm transition-all focus-within:shadow-[0_8px_30px_rgba(0,55,176,0.18)]" onsubmit="handleSearch(event)">
+            <span class="material-symbols-outlined text-primary text-[22px]" style="font-variation-settings: 'FILL' 1;">search</span>
+            <input id="map-search-input" class="w-full bg-transparent text-on-surface placeholder:text-outline font-body-md text-body-md focus:outline-none min-w-0" placeholder="목적지, 건물명 또는 주소 검색" type="text" value="테헤란로 강남스퀘어 주변"/>
+            <button aria-label="검색 제출" type="submit" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform">
+              <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+            </button>
+            <div class="w-px h-5 bg-outline-variant/60 my-auto"></div>
+            <button aria-label="상세 필터" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform" type="button" onclick="resetFilter('all')">
+              <span class="material-symbols-outlined text-[20px]">tune</span>
+            </button>
+          </form>
+
+          <!-- Filter Chips Scroll Container -->
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5" id="filter-chip-container">
+            <button class="filter-btn active-chip flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-on-primary font-label-badge text-label-badge shadow-sm whitespace-nowrap active:scale-95 transition-all" data-filter="all" onclick="setFilter('all', this)" type="button">
+              <span class="material-symbols-outlined text-[15px]">done</span>
+              <span>전체</span>
+            </button>
+            <button class="filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-badge text-label-badge shadow-sm whitespace-nowrap active:scale-95 transition-all hover:bg-surface-container" data-filter="available" onclick="setFilter('available', this)" type="button">
+              <span class="w-2 h-2 rounded-full bg-secondary"></span>
+              <span>실시간 여유 (10대+)</span>
+            </button>
+            <button class="filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-badge text-label-badge shadow-sm whitespace-nowrap active:scale-95 transition-all hover:bg-surface-container" data-filter="p2p" onclick="setFilter('p2p', this)" type="button">
+              <span class="material-symbols-outlined text-[15px] text-primary">handshake</span>
+              <span>P2P 공유</span>
+            </button>
+            <button class="filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-badge text-label-badge shadow-sm whitespace-nowrap active:scale-95 transition-all hover:bg-surface-container" data-filter="public" onclick="setFilter('public', this)" type="button">
+              <span class="material-symbols-outlined text-[15px]">account_balance</span>
+              <span>공영 주차장</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- REAL INTERACTIVE LEAFLET MAP VIEWPORT CONTAINER -->
+        <div class="relative w-full h-[490px] overflow-hidden bg-surface-container-low shadow-inner" id="map-viewport-container">
+          <!-- Leaflet Map Mount Node -->
+          <div id="leaflet-map" class="w-full h-full"></div>
+
+          <!-- Floating Map Controls Stack (Top Right & Bottom Right) -->
+          <div class="absolute right-4 top-4 z-[400] flex flex-col gap-2">
+            <button class="w-10 h-10 rounded-xl bg-surface-container-lowest/95 backdrop-blur-md text-on-surface shadow-lg flex items-center justify-center active:scale-90 transition-transform border border-outline-variant/30 hover:bg-white" onclick="mapZoomIn()" type="button" title="확대">
+              <span class="material-symbols-outlined text-[20px]">add</span>
+            </button>
+            <button class="w-10 h-10 rounded-xl bg-surface-container-lowest/95 backdrop-blur-md text-on-surface shadow-lg flex items-center justify-center active:scale-90 transition-transform border border-outline-variant/30 hover:bg-white" onclick="mapZoomOut()" type="button" title="축소">
+              <span class="material-symbols-outlined text-[20px]">remove</span>
+            </button>
+          </div>
+
+          <div class="absolute right-4 bottom-6 z-[400] flex flex-col gap-2.5">
+            <button class="w-12 h-12 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-on-surface shadow-xl flex items-center justify-center active:scale-90 transition-transform border border-primary/20 hover:bg-white" onclick="recenterLocation(this)" type="button" title="내 위치로 이동">
+              <span class="material-symbols-outlined text-[24px] text-primary" id="gps-icon">my_location</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Detail Card Bottom Drawer -->
+        <div class="px-margin -mt-4 z-40 flex flex-col gap-3">
+          <div class="w-full bg-surface-container-lowest rounded-3xl p-5 shadow-[0_12px_36px_-6px_rgba(19,27,46,0.14)] flex flex-col gap-4 transition-all duration-300 border border-surface-container" id="parking-detail-card">
+            <div class="w-10 h-1 bg-surface-variant rounded-full mx-auto -mt-1 mb-1"></div>
+            
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex flex-col min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-headline-sm text-headline-sm text-on-surface font-bold truncate" id="card-title">강남 센트럴타워 스마트 주차장</span>
+                  <span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-badge text-label-badge font-bold shrink-0" id="card-tag">추천 1위</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1 text-on-surface-variant font-body-sm text-body-sm">
+                  <span class="flex items-center gap-1 text-primary font-bold shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">directions_walk</span>
+                    <span id="card-walk">도보 2분 (150m)</span>
+                  </span>
+                  <span class="w-1 h-1 rounded-full bg-outline-variant shrink-0"></span>
+                  <span class="truncate" id="card-subtext">테헤란로 152 · 연중무휴 24시간</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-secondary-container/35 shrink-0" id="vacancy-badge-box">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-secondary"></span>
+                </span>
+                <div class="flex flex-col items-end">
+                  <span class="font-label-badge text-[12px] text-on-secondary-container font-extrabold leading-tight" id="card-vacancy">여유 18석</span>
+                  <span class="font-label-caption text-[10px] text-secondary font-medium leading-none" id="card-total">/ 총 120석</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pricing & Action Banner -->
+            <div class="rounded-2xl bg-surface-container-low p-3.5 flex items-center justify-between gap-3">
+              <div class="flex flex-col">
+                <span class="font-label-caption text-on-surface-variant text-[11px] leading-tight">주차 요금</span>
+                <div class="flex items-baseline gap-1 mt-0.5">
+                  <span class="font-headline-sm text-headline-sm text-on-surface font-bold" id="card-price">2,000원</span>
+                  <span class="font-label-caption text-on-surface-variant text-[11px]" id="card-unit">/ 기본 30분</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed font-label-badge text-[11px] font-bold shadow-sm shrink-0" id="card-coupon-box">
+                <span class="material-symbols-outlined text-[15px]">confirmation_number</span>
+                <span id="card-coupon">첫 30분 무료 쿠폰</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2.5 pt-1">
+              <button class="flex-1 h-13 py-3.5 px-4 rounded-2xl bg-primary text-on-primary font-headline-sm text-body-lg font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all hover:bg-primary/90" onclick="navigateToPage('page2')" type="button">
+                <span class="material-symbols-outlined text-[20px]">navigation</span>
+                <span>슬롯 확인 및 길안내</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 2: 슬롯 현황 (slot-tracking) -->
+    <div id="page2" class="page-section w-full">
+      <div class="flex flex-col w-full pb-8">
+        <div class="px-margin pt-space-md pb-space-sm">
+          <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col gap-space-xs">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+                <span class="font-label-badge text-label-badge text-secondary font-bold tracking-wider">AI SENSOR LIVE</span>
+              </div>
+              <div class="flex items-center gap-1 text-on-surface-variant font-label-caption text-label-caption">
+                <span class="material-symbols-outlined text-[14px]">history</span>
+                <span id="refresh-timer">3초 전 갱신</span>
+              </div>
+            </div>
+            <h1 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-1.5" id="page2-title">
+              강남 센트럴타워 지하주차장
+              <span class="material-symbols-outlined text-[18px] text-primary">verified</span>
+            </h1>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">초음파 바닥 센서 및 AI 비전 실시간 동기화</p>
+          </div>
+        </div>
+
+        <div class="px-margin flex flex-col gap-space-sm mb-space-md">
+          <div class="bg-surface-container-high p-space-md rounded-xl flex items-center justify-between">
+            <div class="flex items-center gap-space-sm">
+              <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-label-numeric text-label-numeric shadow-sm">
+                B2
+              </div>
+              <div class="flex flex-col">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-body-lg text-body-lg font-bold text-on-surface">지하 2층 (B2)</span>
+                  <span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-badge text-[10px]">최적 추천</span>
+                </div>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">잔여 <span class="font-label-numeric text-label-numeric text-primary font-bold">14</span>석 / 전체 48석</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Digital Twin 2D Floor Plan -->
+        <div class="px-margin flex flex-col gap-space-sm mb-space-md">
+          <div class="bg-surface-container-lowest rounded-xl shadow-md overflow-hidden relative p-space-md">
+            <div class="flex items-center justify-between pb-space-sm mb-space-sm border-b border-surface-container">
+              <span class="font-headline-sm text-headline-sm text-on-surface">B2 도면 뷰어</span>
+              <div class="flex items-center gap-2 font-label-caption text-label-caption text-on-surface-variant">
+                <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-secondary-fixed"></span><span>빈자리</span></div>
+                <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-surface-variant"></span><span>점유</span></div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 mb-4">
+              <div class="flex flex-col items-center justify-between p-2 rounded-xl bg-surface-container-low min-h-[80px] opacity-70">
+                <span class="font-label-badge font-bold">A-01</span>
+                <span class="material-symbols-outlined text-[28px] text-outline">directions_car</span>
+                <span class="font-label-caption text-[10px] text-outline">주차중</span>
+              </div>
+
+              <button class="slot-select relative flex flex-col items-center justify-between p-2 rounded-xl bg-secondary-fixed text-on-secondary-fixed shadow-md min-h-[80px]" onclick="selectSlot('A-02', 'B2층 A-02 구역')" type="button">
+                <span class="font-label-badge font-bold">A-02</span>
+                <span class="material-symbols-outlined text-[24px] text-secondary">check_circle</span>
+                <span class="font-label-caption text-[9px] bg-secondary text-on-secondary px-1.5 py-0.5 rounded-full font-bold">선택됨</span>
+              </button>
+
+              <button class="slot-select flex flex-col items-center justify-between p-2 rounded-xl bg-surface-container-lowest border border-secondary-container min-h-[80px]" onclick="selectSlot('A-03', 'B2층 A-03 구역')" type="button">
+                <span class="font-label-badge font-bold">A-03</span>
+                <span class="material-symbols-outlined text-[24px] text-secondary">local_parking</span>
+                <span class="font-label-caption text-[10px] text-secondary font-bold">빈자리</span>
+              </button>
+
+              <div class="flex flex-col items-center justify-between p-2 rounded-xl bg-surface-container-low min-h-[80px] opacity-70">
+                <span class="font-label-badge font-bold">A-04</span>
+                <span class="material-symbols-outlined text-[28px] text-outline">directions_car</span>
+                <span class="font-label-caption text-[10px] text-outline">주차중</span>
+              </div>
+            </div>
+
+            <!-- Target confirmation box -->
+            <div class="bg-surface-container-low p-3.5 rounded-xl flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="font-label-badge text-primary text-[11px]">SELECTED SPOT</span>
+                <span class="font-headline-sm text-body-lg font-bold" id="selected-spot-title">B2층 A-02 구역</span>
+              </div>
+              <button class="px-4 py-2.5 rounded-xl bg-primary text-on-primary font-headline-sm text-body-sm shadow-sm active:scale-95 transition-all" onclick="navigateToPage('page4')" type="button">
+                입차 선점 예약
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 3: 공유 주차 (p2p-share) -->
+    <div id="page3" class="page-section w-full">
+      <div class="flex flex-col w-full">
+        <!-- Top Host Incentive Banner -->
+        <div class="px-margin pt-space-md">
+          <div class="relative overflow-hidden rounded-xl bg-gradient-to-r from-tertiary-container to-tertiary p-space-md shadow-md text-on-tertiary">
+            <div class="relative z-10 flex items-center justify-between gap-space-sm">
+              <div class="flex items-center gap-space-sm min-w-0">
+                <div class="w-10 h-10 rounded-lg bg-surface/20 backdrop-blur-md flex items-center justify-center shrink-0 text-on-tertiary">
+                  <span class="material-symbols-outlined text-[24px]">savings</span>
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span class="font-label-badge text-label-badge text-on-tertiary-container tracking-wide uppercase">이웃 상생 재테크</span>
+                  <p class="font-body-sm text-body-sm text-on-tertiary font-medium truncate">출근 후 비어있는 주차면, 이웃과 공유하세요!</p>
+                </div>
+              </div>
+              <button class="shrink-0 px-2.5 py-1.5 rounded-lg bg-surface text-tertiary font-headline-sm text-label-caption flex items-center gap-0.5 active:scale-95 transition-transform shadow-sm" type="button">
+                <span>호스트 등록</span>
+                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Role Toggle Pill -->
+        <div class="px-margin pt-space-md">
+          <div class="p-1 rounded-xl bg-surface-container flex items-center">
+            <button class="flex-1 py-2 rounded-lg bg-surface-container-lowest text-primary shadow-sm font-headline-sm text-body-sm flex items-center justify-center gap-1.5 transition-all" id="toggle-renter" type="button">
+              <span class="material-symbols-outlined text-[18px]">car_rental</span>
+              <span>주차면 빌리기 (이용자)</span>
+            </button>
+            <button class="flex-1 py-2 rounded-lg text-on-surface-variant font-body-md text-body-sm flex items-center justify-center gap-1.5 transition-all hover:text-on-surface" id="toggle-host" type="button">
+              <span class="material-symbols-outlined text-[18px]">add_business</span>
+              <span>내 주차면 공유 (호스트)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section Header -->
+        <div class="px-margin pt-space-lg pb-space-xs flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-headline-sm text-headline-sm text-on-surface">실시간 P2P 공유 주차면</span>
+            <span class="w-5 h-5 rounded-full bg-primary-container text-on-primary font-label-badge text-label-caption flex items-center justify-center">3</span>
+          </div>
+        </div>
+
+        <!-- Listings List -->
+        <div class="px-margin flex flex-col gap-space-md pb-space-xl">
+          <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-md flex flex-col gap-space-sm relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded-full bg-surface-variant text-primary font-label-badge text-[11px] font-bold">P2P 거주자 지정</span>
+              <span class="font-label-caption text-secondary font-bold">1,500원 / 시간</span>
+            </div>
+            <div class="flex gap-space-sm items-start">
+              <img class="w-20 h-20 rounded-lg object-cover bg-surface-container shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnlkGLQuwW6pZGX9-rddzsIOKzcEcU-ZMKzSVGlEZMi-VjpE5QHYWsMiM23agMzlUBobohuTfijl7T4aEmZpHq6Hk1jeLaP8o2DP5iYewwCAUitnnVur5b_71wuN5bw_3vI0g-3pXkE9N2aaec6bdXk2n64rrNTH-Rdbvdv1SiNdwSMO9K_9dB1srB7Z1MAU4YjrBlj1B9rgm0GEwOugJMQZAsdQIV_mI01BUpVbh2hgk0w5QkM3GF" alt="주차장 이미지"/>
+              <div class="flex flex-col min-w-0">
+                <h3 class="font-headline-sm text-body-lg font-bold truncate">역삼동 래미안 빌라 102동 지정석</h3>
+                <p class="font-label-caption text-on-surface-variant truncate mt-0.5">서울 강남구 테헤란로28길 19-4 (도보 2분)</p>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="font-body-sm font-medium text-on-surface">김*민 호스트 ★ 4.9</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-primary text-on-primary font-headline-sm text-body-sm shadow-sm active:scale-95 transition-all mt-1" onclick="navigateToPage('page4')" type="button">
+              즉시 예약 신청하기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 4: 내 주차 (my-parking) -->
+    <div id="page4" class="page-section w-full">
+      <div class="flex flex-col w-full px-margin pt-space-md gap-space-md">
+        
+        <!-- Active Parking Ticket Card -->
+        <div class="bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-2xl p-space-md shadow-lg flex flex-col gap-space-sm relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-badge text-[10px] font-bold">이용 중 (Active)</span>
+            <span class="font-label-caption text-primary-fixed text-[11px]">입차 14:20 • 현재 38분 경과</span>
+          </div>
+
+          <div class="flex flex-col mt-1">
+            <h2 class="font-headline-md text-headline-md font-bold">강남 센트럴타워 지하주차장</h2>
+            <p class="font-body-sm text-primary-fixed flex items-center gap-1 mt-0.5">
+              <span class="material-symbols-outlined text-[16px]">pin_drop</span>
+              B2층 A-02 지정 구역
+            </p>
+          </div>
+
+          <!-- Digital Barcode / Ticket Section -->
+          <div class="bg-surface-container-lowest/10 backdrop-blur-md rounded-xl p-3 flex items-center justify-between mt-2 border border-white/10">
+            <div class="flex flex-col">
+              <span class="font-label-caption text-primary-fixed text-[10px]">자동 정산 예정 금액</span>
+              <span class="font-headline-sm text-headline-sm font-bold text-white">₩3,200</span>
+            </div>
+            <button class="px-3.5 py-2 rounded-xl bg-surface-container-lowest text-primary font-headline-sm text-body-sm font-bold shadow-sm active:scale-95 transition-transform" type="button">
+              모바일 출차 QR
+            </button>
+          </div>
+        </div>
+
+        <!-- Registered Vehicles Section -->
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-headline-sm text-body-lg font-bold text-on-surface">등록 차량 관리</span>
+            <span class="text-primary font-label-badge text-body-sm cursor-pointer">+ 차량 추가</span>
+          </div>
+          <div class="flex items-center gap-3 p-2.5 rounded-lg bg-surface-container-low border border-surface-container">
+            <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+              <span class="material-symbols-outlined text-[24px]">directions_car</span>
+            </div>
+            <div class="flex flex-col flex-1">
+              <span class="font-headline-sm text-body-md font-bold text-on-surface">12가 3456 (대표)</span>
+              <span class="font-label-caption text-on-surface-variant text-[11px]">현대 아이오닉 6 • 전기차 할인 자동 적용</span>
+            </div>
+            <span class="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+          </div>
+        </div>
+
+        <!-- Recent History -->
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+          <span class="font-headline-sm text-body-lg font-bold text-on-surface">최근 주차 이용 내역</span>
+          
+          <div class="flex items-center justify-between py-2 border-b border-surface-container">
+            <div class="flex flex-col">
+              <span class="font-headline-sm text-body-md font-bold text-on-surface">역삼 테크노타워</span>
+              <span class="font-label-caption text-on-surface-variant text-[11px]">2026.09.28 • 2시간 15분 이용</span>
+            </div>
+            <span class="font-headline-sm text-body-md font-bold text-on-surface">₩6,000</span>
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <div class="flex flex-col">
+              <span class="font-headline-sm text-body-md font-bold text-on-surface">역삼동 래미안 빌라 P2P</span>
+              <span class="font-label-caption text-on-surface-variant text-[11px]">2026.09.25 • 4시간 이용</span>
+            </div>
+            <span class="font-headline-sm text-body-md font-bold text-on-surface">₩6,000</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FIXED BOTTOM NAVIGATION BAR -->
+  <nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface/90 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(19,27,46,0.08)]">
+    <div class="flex items-center justify-around h-16 px-space-xs">
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors text-primary" data-page="page1" href="#page1" onclick="navigateToPage('page1'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">near_me</span>
+        <span class="font-label-caption text-[11px] leading-tight font-medium">주차 탐색</span>
+      </a>
+
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors" data-page="page2" href="#page2" onclick="navigateToPage('page2'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">grid_view</span>
+        <span class="font-label-caption text-[11px] leading-tight font-medium">슬롯 현황</span>
+      </a>
+
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors" data-page="page3" href="#page3" onclick="navigateToPage('page3'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">handshake</span>
+        <span class="font-label-caption text-[11px] leading-tight font-medium">공유 주차</span>
+      </a>
+
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors" data-page="page4" href="#page4" onclick="navigateToPage('page4'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">schedule</span>
+        <span class="font-label-caption text-[11px] leading-tight font-medium">내 주차</span>
+      </a>
+    </div>
+  </nav>
+
+  <script>
+    // Subtitle Mapping
+    const subtitles = {
+      'page1': 'Explore Parking',
+      'page2': 'Slot Tracking',
+      'page3': 'P2P Share',
+      'page4': 'My Parking'
+    };
+
+    // User Location Coordinates (Teheran-ro, Seoul)
+    const USER_LOCATION = [37.4979, 127.0276];
+
+    // Real Parking Data Collection
+    const parkingSpots = [
+      {
+        id: 'spot-1',
+        name: '강남 센트럴타워 스마트 주차장',
+        lat: 37.4984,
+        lng: 127.0288,
+        category: 'available',
+        vacancy: '여유 18석',
+        total: '/ 총 120석',
+        vacancyCount: 18,
+        price: '2,000원',
+        unit: '/ 기본 30분',
+        tag: '추천 1위',
+        walk: '도보 2분 (150m)',
+        subtext: '테헤란로 152 · 연중무휴 24시간',
+        coupon: '첫 30분 무료 쿠폰',
+        pinBadge: '추천 18석 • 2,000원',
+        pinClass: 'bg-primary-container text-on-primary shadow-[0_10px_24px_rgba(29,78,216,0.45)]'
+      },
+      {
+        id: 'spot-2',
+        name: '역삼 테크노타워',
+        lat: 37.5008,
+        lng: 127.0342,
+        category: 'available',
+        vacancy: '여유 42석',
+        total: '/ 총 200석',
+        vacancyCount: 42,
+        price: '3,000원',
+        unit: '/ 1시간',
+        tag: '여유 빌딩',
+        walk: '도보 4분 (280m)',
+        subtext: 'EV 급속 2기 · 2.3m 이하 높이',
+        coupon: '주중 10% 추가 할인',
+        pinBadge: '여유 42석 • 3,000원',
+        pinClass: 'bg-surface-container-lowest text-secondary shadow-[0_8px_20px_-2px_rgba(0,108,74,0.3)] border border-secondary/20'
+      },
+      {
+        id: 'spot-3',
+        name: '강남역 제1공영주차장',
+        lat: 37.4955,
+        lng: 127.0260,
+        category: 'public',
+        vacancy: '혼잡 3석',
+        total: '/ 총 85석',
+        vacancyCount: 3,
+        price: '2,400원',
+        unit: '/ 1시간',
+        tag: '공영주차장',
+        walk: '도보 6분 (410m)',
+        subtext: '공영할인 50% · 지상 평지 주차장',
+        coupon: '경차/저공해 50% 할인',
+        pinBadge: '혼잡 3석 • 2,400원',
+        pinClass: 'bg-surface-container-lowest text-tertiary shadow-[0_8px_20px_-2px_rgba(107,55,0,0.25)] border border-tertiary/20'
+      },
+      {
+        id: 'spot-4',
+        name: '역삼동 래미안 빌라 P2P 공유',
+        lat: 37.5020,
+        lng: 127.0310,
+        category: 'p2p',
+        vacancy: '여유 1석',
+        total: '/ 지정석 1대',
+        vacancyCount: 1,
+        price: '1,500원',
+        unit: '/ 1시간',
+        tag: '이웃 공유',
+        walk: '도보 3분 (210m)',
+        subtext: '테헤란로28길 19-4 · 거주자 지정석',
+        coupon: 'P2P 첫 이용 1천원 쿠폰',
+        pinBadge: 'P2P 공유 • 1,500원',
+        pinClass: 'bg-surface-container-lowest text-primary shadow-[0_8px_20px_-2px_rgba(0,55,176,0.3)] border border-primary/20'
+      }
+    ];
+
+    let map = null;
+    let markersMap = {};
+    let activeSpotId = 'spot-1';
+    let currentFilter = 'all';
+
+    // Initialize Interactive Leaflet Map
+    function initMap() {
+      if (map) return;
+
+      // 1. Create Map Instance
+      map = L.map('leaflet-map', {
+        zoomControl: false,
+        attributionControl: true
+      }).setView(USER_LOCATION, 15);
+
+      // 2. Add Sleek CartoDB Voyager Tile Layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }).addTo(map);
+
+      // 3. Render User GPS Location Pulsing Beacon
+      const userIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `
+          <div class="relative flex items-center justify-center w-12 h-12 -ml-6 -mt-6">
+            <span class="absolute w-12 h-12 rounded-full bg-primary/20 animate-ping opacity-75"></span>
+            <span class="absolute w-7 h-7 rounded-full bg-primary/30"></span>
+            <div class="w-5 h-5 rounded-full bg-primary shadow-[0_0_12px_rgba(0,55,176,0.8)] flex items-center justify-center border-2 border-white">
+              <div class="w-2 h-2 rounded-full bg-white"></div>
+            </div>
+            <div class="absolute -bottom-5 px-2 py-0.5 rounded-full bg-inverse-surface/90 backdrop-blur-sm text-inverse-on-surface font-label-badge text-[10px] whitespace-nowrap shadow-md">
+              내 위치
+            </div>
+          </div>
+        `,
+        iconSize: [0, 0]
+      });
+      L.marker(USER_LOCATION, { icon: userIcon, zIndexOffset: 500 }).addTo(map);
+
+      // 4. Render Parking Spot Pins
+      renderParkingMarkers();
+    }
+
+    function renderParkingMarkers() {
+      // Clear existing markers
+      Object.values(markersMap).forEach(m => map.removeLayer(m));
+      markersMap = {};
+
+      parkingSpots.forEach(spot => {
+        // Filter Check
+        if (currentFilter === 'available' && spot.vacancyCount < 10) return;
+        if (currentFilter === 'p2p' && spot.category !== 'p2p') return;
+        if (currentFilter === 'public' && spot.category !== 'public') return;
+
+        const isActive = spot.id === activeSpotId;
+        const activeClass = isActive ? 'marker-active ring-2 ring-primary scale-105' : 'hover:scale-105';
+
+        const htmlIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `
+            <div class="cursor-pointer group flex flex-col items-center -ml-16 -mt-8 ${activeClass} transition-all duration-200">
+              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full ${spot.pinClass} font-label-badge text-[12px] font-bold">
+                ${spot.id === 'spot-1' ? '<span class="material-symbols-outlined text-[14px]">stars</span>' : ''}
+                <span>${spot.pinBadge}</span>
+              </div>
+              <div class="w-3 h-2 ${isActive ? 'bg-primary' : 'bg-surface-container-lowest'} [clip-path:polygon(0_0,100%_0,50%_100%)] shadow-md -mt-0.5"></div>
+            </div>
+          `,
+          iconSize: [0, 0]
+        });
+
+        const marker = L.marker([spot.lat, spot.lng], { icon: htmlIcon });
+        marker.on('click', () => selectSpot(spot.id));
+        marker.addTo(map);
+        markersMap[spot.id] = marker;
+      });
+    }
+
+    function selectSpot(spotId) {
+      activeSpotId = spotId;
+      const spot = parkingSpots.find(s => s.id === spotId);
+      if (!spot) return;
+
+      // Smooth Fly map center to spot
+      if (map) {
+        map.flyTo([spot.lat, spot.lng], 16, { animate: true, duration: 0.8 });
+      }
+
+      // Refresh marker visual active state
+      renderParkingMarkers();
+
+      // Update Bottom Drawer Card
+      document.getElementById('card-title').innerText = spot.name;
+      document.getElementById('card-tag').innerText = spot.tag;
+      document.getElementById('card-walk').innerText = spot.walk;
+      document.getElementById('card-subtext').innerText = spot.subtext;
+      document.getElementById('card-vacancy').innerText = spot.vacancy;
+      document.getElementById('card-total').innerText = spot.total;
+      document.getElementById('card-price').innerText = spot.price;
+      document.getElementById('card-unit').innerText = spot.unit;
+      document.getElementById('card-coupon').innerText = spot.coupon;
+
+      // Update Page 2 Title as well
+      const p2Title = document.getElementById('page2-title');
+      if (p2Title) p2Title.innerHTML = `${spot.name} <span class="material-symbols-outlined text-[18px] text-primary">verified</span>`;
+    }
+
+    // Filter Chips Toggle Logic
+    function setFilter(filterType, btn) {
+      currentFilter = filterType;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.className = "filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-badge text-label-badge shadow-sm whitespace-nowrap active:scale-95 transition-all hover:bg-surface-container";
+      });
+      btn.className = "filter-btn active-chip flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-on-primary font-label-badge text-label-badge shadow-sm whitespace-nowrap active:scale-95 transition-all";
+      renderParkingMarkers();
+    }
+
+    function resetFilter(filterType) {
+      const defaultBtn = document.querySelector('.filter-btn[data-filter="all"]');
+      if (defaultBtn) setFilter('all', defaultBtn);
+    }
+
+    // Map Zoom Controls
+    function mapZoomIn() {
+      if (map) map.zoomIn();
+    }
+    function mapZoomOut() {
+      if (map) map.zoomOut();
+    }
+
+    // Recenter GPS Button
+    function recenterLocation(btn) {
+      const icon = document.getElementById('gps-icon');
+      if (icon) icon.classList.add('animate-spin');
+
+      setTimeout(() => {
+        if (map) {
+          map.flyTo(USER_LOCATION, 16, { animate: true, duration: 1 });
+        }
+        selectSpot('spot-1');
+        if (icon) icon.classList.remove('animate-spin');
+      }, 400);
+    }
+
+    // Map Search Handling
+    function handleSearch(e) {
+      e.preventDefault();
+      const input = document.getElementById('map-search-input');
+      const query = input.value.trim();
+      
+      if (!query) return;
+
+      // Find match or default fly
+      const match = parkingSpots.find(s => s.name.includes(query) || query.includes('강남') || query.includes('테헤란로'));
+      if (match) {
+        selectSpot(match.id);
+      } else {
+        recenterLocation();
+      }
+    }
+
+    // Tab Navigation
+    function navigateToPage(pageId) {
+      document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+      const targetPage = document.getElementById(pageId);
+      if (targetPage) {
+        targetPage.classList.add('active');
+      }
+
+      const subtitleEl = document.getElementById('header-subtitle');
+      if (subtitleEl && subtitles[pageId]) {
+        subtitleEl.innerText = subtitles[pageId];
+      }
+
+      document.querySelectorAll('nav div a').forEach(link => {
+        if (link.getAttribute('data-page') === pageId) {
+          link.className = "group flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors text-primary";
+        } else {
+          link.className = "group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors";
+        }
+      });
+
+      window.scrollTo(0, 0);
+
+      // Invalidate Leaflet Map Size when returning to page1
+      if (pageId === 'page1' && map) {
+        setTimeout(() => map.invalidateSize(), 200);
+      }
+    }
+
+    function selectSlot(code, title) {
+      const titleEl = document.getElementById('selected-spot-title');
+      if (titleEl) titleEl.innerText = title;
+    }
+
+    // Initialize Map on Load
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      const hash = location.hash.replace('#', '');
+      if (hash && ['page1', 'page2', 'page3', 'page4'].includes(hash)) {
+        navigateToPage(hash);
+      } else {
+        navigateToPage('page1');
+      }
+    });
+  </script>
+</body>
+</html>
